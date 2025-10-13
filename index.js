@@ -184,7 +184,7 @@ bot.onText(/^\/edit$/, (msg) => {
 ✅ Будьте конкретны
 ✅ Указывайте детали
 ✅ Просите сохранить стиль и композицию
-  `, { reply_markup: showModeKeyboard(chatId) });
+  `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
 });
 
 // Команда /analyze - включить режим анализа
@@ -205,7 +205,7 @@ bot.onText(/^\/analyze$/, (msg) => {
 • "Извлеки текст с картинки"
 • "Что ты видишь на фото?"
 • "Определи объекты"
-  `, { reply_markup: showModeKeyboard(chatId) });
+  `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
 });
 
 // Команда /gen - включить режим генерации изображений
@@ -240,7 +240,7 @@ bot.onText(/^\/gen(?:\s+(.+))?$/, async (msg, match) => {
 ✅ Упоминайте цвета и композицию
 
 Или используйте: /gen <описание> для быстрой генерации
-    `, { reply_markup: showModeKeyboard(chatId) });
+    `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
   }
 });
 
@@ -280,7 +280,7 @@ bot.onText(/^\/genvideo(?:\s+(.+))?$/, async (msg, match) => {
 ⏱️ Генерация видео занимает 10-60 секунд. Пожалуйста, подождите!
 
 Или используйте: /genvideo <описание> для быстрой генерации
-    `, { reply_markup: showModeKeyboard(chatId) });
+    `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
   }
 });
 
@@ -311,7 +311,7 @@ bot.onText(/^\/genvideofrompicture$/, (msg) => {
 ✅ Можно указать кинематографические приемы
 
 ⏱️ Генерация видео занимает 10-60 секунд. Пожалуйста, подождите!
-  `, { reply_markup: showModeKeyboard(chatId) });
+  `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
 });
 
 // Команда /clear
@@ -482,7 +482,7 @@ bot.on('message', async (msg) => {
 • "Извлеки текст с картинки"
 • "Что ты видишь на фото?"
 • "Определи объекты"
-      `, { reply_markup: showModeKeyboard(chatId) });
+      `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
       return;
     }
     
@@ -502,7 +502,7 @@ bot.on('message', async (msg) => {
 • "Добавь солнечные очки на лицо"
 • "Измени цвет машины на красный"
 • "Сделай изображение черно-белым"
-      `, { reply_markup: showModeKeyboard(chatId) });
+      `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
       return;
     }
     
@@ -522,7 +522,7 @@ bot.on('message', async (msg) => {
 • "Создай изображение кота в космосе"
 • "Футуристический город ночью, неоновые огни"
 • "Милый робот с букетом цветов, акварельный стиль"
-      `, { reply_markup: showModeKeyboard(chatId) });
+      `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
       return;
     }
     
@@ -544,7 +544,7 @@ bot.on('message', async (msg) => {
 • "Кот играет с красным мячиком на траве"
 
 ⏱️ Генерация видео занимает 10-60 секунд. Пожалуйста, подождите!
-      `, { reply_markup: showModeKeyboard(chatId) });
+      `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
       return;
     }
     
@@ -566,7 +566,7 @@ bot.on('message', async (msg) => {
 • "Создай эффект параллакса с движением на фоне"
 
 ⏱️ Генерация видео занимает 10-60 секунд. Пожалуйста, подождите!
-      `, { reply_markup: showModeKeyboard(chatId) });
+      `, { reply_markup: showModeKeyboard(chatId), parse_mode: 'Markdown' });
       return;
     }
     
@@ -895,7 +895,7 @@ ${config.model === 'gemini-2.5-flash' ? `💭 Размышления: **${config
 Просто отправляйте сообщения, и я буду на них отвечать!
 
 💡 Чтобы закончить чат, нажмите кнопку на клавиатуре ниже.
-    `, { reply_markup: keyboard });
+    `, { reply_markup: keyboard, parse_mode: 'Markdown' });
     
     console.log(`✅ Чат успешно открыт для пользователя ${chatId}`);
     
@@ -945,10 +945,10 @@ async function processChatMessage(chatId, message) {
       if (resultText.length > maxLength) {
         const chunks = resultText.match(new RegExp(`.{1,${maxLength}}`, 'g'));
         for (const chunk of chunks) {
-          await bot.sendMessage(chatId, chunk);
+          await bot.sendMessage(chatId, chunk, { parse_mode: 'Markdown' });
         }
       } else {
-        await bot.sendMessage(chatId, resultText);
+        await bot.sendMessage(chatId, resultText, { parse_mode: 'Markdown' });
       }
     } else {
       console.log('⚠️ Пустой ответ от Gemini');
