@@ -1,0 +1,53 @@
+# Зависимости
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Переменные окружения (добавляются отдельно)
+.env
+.env.local
+.env.*.local
+
+# Git
+.git/
+.gitignore
+
+# Документация
+*.md
+!README.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Логи
+logs/
+*.log
+
+# Временные файлы
+tmp/
+temp/
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Тесты (опционально, можно включить)
+test-gemini.js
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+

@@ -1,0 +1,28 @@
+{
+  "name": "gemini-telegram-bot",
+  "version": "2.0.0",
+  "description": "Telegram бот для анализа и редактирования изображений с нейросетью Gemini AI",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "test": "node test-gemini.js"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "gemini",
+    "ai",
+    "image-processing"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "node-telegram-bot-api": "^0.66.0",
+    "dotenv": "^16.4.7",
+    "axios": "^1.7.9"
+  }
+}
+
