@@ -3,7 +3,6 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
 # Переменные окружения (добавляются отдельно)
 .env
@@ -49,5 +48,6 @@ test-gemini.js
 # CI/CD
 .github/
 .gitlab-ci.yml
+
 
 
