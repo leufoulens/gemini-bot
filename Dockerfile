@@ -12,7 +12,6 @@ RUN npm ci --only=production
 
 # Копируем исходный код
 COPY index.js ./
-COPY test-gemini.js ./
 
 # Создаем непривилегированного пользователя
 RUN addgroup -g 1001 -S nodejs && \
