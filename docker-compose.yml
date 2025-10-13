@@ -43,9 +43,6 @@ services:
       retries: 3
       start_period: 40s
     
-    # Политика перезапуска
-    restart: unless-stopped
-    
     # Сеть (опционально)
     # networks:
     #   - bot-network
