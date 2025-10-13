@@ -7,50 +7,32 @@ services:
       dockerfile: Dockerfile
     container_name: gemini-telegram-bot
     restart: unless-stopped
-    
-    # Переменные окружения из .env файла
     env_file:
       - .env
-    
-    # Альтернативно, можно указать напрямую:
-    # environment:
-    #   - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-    #   - GEMINI_API_KEY=${GEMINI_API_KEY}
-    #   - NODE_ENV=production
-    
-    # Ограничения ресурсов
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-        reservations:
-          cpus: '0.5'
-          memory: 256M
-    
-    # Логирование
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    
-    # Healthcheck
+    environment:
+      - NODE_ENV=production
+      - TZ=Europe/Moscow
+    # Healthcheck для мониторинга состояния контейнера
     healthcheck:
       test: ["CMD", "node", "-e", "console.log('Bot is running')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
-    
-    # Сеть (опционально)
-    # networks:
-    #   - bot-network
-
-# Опционально: определение сети
-# networks:
-#   bot-network:
-#     driver: bridge
-
+    # Логирование
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Ограничения ресурсов (опционально)
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
 
 
