@@ -33,6 +33,9 @@ const imageModels = new Map();
 // Хранилище выбранных моделей для генерации видео
 const videoModels = new Map();
 
+// Хранилище промптов для повторной генерации
+const regeneratePrompts = new Map();
+
 console.log('🤖 Бот запущен и готов к работе!');
 
 // Функция показа главного меню
@@ -554,6 +557,50 @@ bot.on('callback_query', async (query) => {
         
         console.log(`✅ Модель ${model} выбрана для режима ${mode} пользователем ${chatId}`);
       }
+    } else if (data.startsWith('regen_')) {
+      // Обработка повторной генерации
+      const parts = data.split('_');
+      const type = parts[1]; // 'img', 'edit', 'video', 'videofromimg'
+      const promptKey = `${chatId}_${type}`;
+      const savedData = regeneratePrompts.get(promptKey);
+      
+      if (!savedData) {
+        await bot.answerCallbackQuery(query.id, {
+          text: '⚠️ Промпт не найден. Попробуйте снова.',
+          show_alert: true
+        });
+        return;
+      }
+      
+      // Отправляем подтверждение
+      try {
+        await bot.editMessageReplyMarkup(
+          { inline_keyboard: [] },
+          {
+            chat_id: chatId,
+            message_id: query.message.message_id
+          }
+        );
+      } catch (e) {
+        // Игнорируем ошибку
+      }
+      
+      // Запускаем повторную генерацию
+      if (type === 'img') {
+        await bot.sendMessage(chatId, '🔄 Повторная генерация изображения...');
+        await processImageGeneration(chatId, savedData.prompt);
+      } else if (type === 'edit') {
+        await bot.sendMessage(chatId, '🔄 Повторное редактирование изображения...');
+        await processImageEdit(chatId, savedData.images, savedData.prompt, savedData.imageId);
+      } else if (type === 'video') {
+        await bot.sendMessage(chatId, '🔄 Повторная генерация видео...');
+        await processVideoGeneration(chatId, savedData.prompt);
+      } else if (type === 'videofromimg') {
+        await bot.sendMessage(chatId, '🔄 Повторная генерация видео из изображения...');
+        await processVideoGenerationFromImage(chatId, savedData.image, savedData.prompt, savedData.imageId);
+      }
+      
+      console.log(`🔄 Повторная генерация (${type}) для пользователя ${chatId}`);
     }
   } catch (error) {
     console.error('❌ Ошибка при обработке callback:', error);
@@ -1358,13 +1405,31 @@ async function processImageEdit(chatId, base64Images, prompt, imageId) {
       
       console.log('📤 Отправляем отредактированное изображение');
       
+      // Сохраняем промпт и изображения для повторной генерации
+      regeneratePrompts.set(`${chatId}_edit`, {
+        prompt: prompt,
+        images: imagesArray.slice(0, imageCount),
+        imageId: imageId,
+        timestamp: Date.now()
+      });
+      
+      // Создаем inline кнопку для повторной генерации
+      const replyMarkup = {
+        inline_keyboard: [
+          [
+            { text: '🔄 Повторить генерацию', callback_data: 'regen_edit' }
+          ]
+        ]
+      };
+      
       // Отправляем отредактированное изображение пользователю
       const captionText = imageCount === 2 
         ? `✨ Готово! (композиция из ${imageCount} изображений)${textResponse ? '\n\n' + textResponse : ''}`
         : `✨ Готово!${textResponse ? '\n\n' + textResponse : ''}`;
       
       await bot.sendPhoto(chatId, editedImageBuffer, {
-        caption: captionText
+        caption: captionText,
+        reply_markup: replyMarkup
       });
       
       console.log('✅ Изображение успешно отправлено');
@@ -1499,9 +1564,25 @@ async function processImageGeneration(chatId, prompt) {
       
       console.log('📤 Отправляем сгенерированное изображение');
       
+      // Сохраняем промпт для повторной генерации
+      regeneratePrompts.set(`${chatId}_img`, {
+        prompt: prompt,
+        timestamp: Date.now()
+      });
+      
+      // Создаем inline кнопку для повторной генерации
+      const replyMarkup = {
+        inline_keyboard: [
+          [
+            { text: '🔄 Повторить генерацию', callback_data: 'regen_img' }
+          ]
+        ]
+      };
+      
       // Отправляем сгенерированное изображение пользователю
       await bot.sendPhoto(chatId, generatedImageBuffer, {
-        caption: textResponse ? `✨ Готово!\n\n${textResponse}` : '✨ Изображение сгенерировано!'
+        caption: textResponse ? `✨ Готово!\n\n${textResponse}` : '✨ Изображение сгенерировано!',
+        reply_markup: replyMarkup
       });
       
       console.log('✅ Изображение успешно отправлено');
@@ -1712,11 +1793,27 @@ async function processVideoGeneration(chatId, prompt) {
     
     console.log('📤 Отправляем видео пользователю');
     
+    // Сохраняем промпт для повторной генерации
+    regeneratePrompts.set(`${chatId}_video`, {
+      prompt: prompt,
+      timestamp: Date.now()
+    });
+    
+    // Создаем inline кнопку для повторной генерации
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          { text: '🔄 Повторить генерацию', callback_data: 'regen_video' }
+        ]
+      ]
+    };
+    
     // Отправляем видео пользователю через Buffer
     const videoBuffer = fs.readFileSync(tempVideoPath);
     await bot.sendVideo(chatId, videoBuffer, {
       caption: `✨ Видео сгенерировано с помощью модели ${selectedModel}!`,
-      contentType: 'video/mp4'
+      contentType: 'video/mp4',
+      reply_markup: replyMarkup
     });
     
     console.log('✅ Видео успешно отправлено');
@@ -1946,11 +2043,29 @@ async function processVideoGenerationFromImage(chatId, base64Image, prompt, imag
     
     console.log('📤 Отправляем видео пользователю');
     
+    // Сохраняем промпт и изображение для повторной генерации
+    regeneratePrompts.set(`${chatId}_videofromimg`, {
+      prompt: prompt,
+      image: base64Image,
+      imageId: imageId,
+      timestamp: Date.now()
+    });
+    
+    // Создаем inline кнопку для повторной генерации
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          { text: '🔄 Повторить генерацию', callback_data: 'regen_videofromimg' }
+        ]
+      ]
+    };
+    
     // Отправляем видео пользователю через Buffer
     const videoBuffer = fs.readFileSync(tempVideoPath);
     await bot.sendVideo(chatId, videoBuffer, {
       caption: `✨ Видео сгенерировано из изображения с помощью модели ${selectedModel}!`,
-      contentType: 'video/mp4'
+      contentType: 'video/mp4',
+      reply_markup: replyMarkup
     });
     
     console.log('✅ Видео успешно отправлено');
@@ -2037,6 +2152,15 @@ setInterval(() => {
     if (!session || (now - session.timestamp > imageTimeout)) {
       imageStorage.delete(chatId);
       console.log(`🗑️ Удалены старые изображения пользователя ${chatId}`);
+    }
+  }
+  
+  // Очистка старых промптов для повторной генерации
+  const promptTimeout = 60 * 60 * 1000; // 1 час
+  for (const [key, data] of regeneratePrompts.entries()) {
+    if (now - data.timestamp > promptTimeout) {
+      regeneratePrompts.delete(key);
+      console.log(`🗑️ Удален старый промпт для повторной генерации: ${key}`);
     }
   }
 }, 30 * 60 * 1000);
