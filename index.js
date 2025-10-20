@@ -96,11 +96,12 @@ function getHelpMessage() {
 Используйте кнопку "💬 Чат с Gemini" для открытия меню настройки чата.
 
 Доступные настройки:
-• 🤖 **Модель**: Gemini 2.5 Pro или Flash
+• 🤖 **Модель**: Gemini 2.5 Pro / Flash / Flash Image
 • 🌡️ **Температура**: Низкая (точность) / Средняя / Высокая (креативность)
 • 📊 **Длина ответов**: Короткие / Средние / Длинные / Очень длинные
 • 💭 **Режим размышлений**: Включен / Выключен (только для Flash)
 
+📸 **Модель Flash Image** поддерживает обсуждение изображений!
 В режиме чата модель запоминает контекст всего разговора.
 
 ---
@@ -632,6 +633,15 @@ bot.on('photo', async (msg) => {
     const imageBuffer = Buffer.from(response.data);
     const base64Image = imageBuffer.toString('base64');
     
+    // Проверяем, есть ли активная чат-сессия с поддержкой изображений
+    const chatSession = chatSessions.get(chatId);
+    if (chatSession && chatSession.config.model === 'gemini-2.5-flash-image') {
+      // Обрабатываем изображение в режиме чата
+      const caption = msg.caption || '';
+      await processChatMessageWithImage(chatId, caption, base64Image);
+      return;
+    }
+    
     // Получаем или создаем сессию пользователя
     const session = userSessions.get(chatId) || {};
     const mode = session.mode || 'analyze'; // По умолчанию режим анализа
@@ -924,13 +934,21 @@ function getDefaultChatConfig() {
     temperature: 0.7,
     maxOutputTokens: 2048,
     thinkingEnabled: true,
-    systemInstruction: null
+    systemInstruction: null,
+    supportsImages: false
   };
 }
 
 // Функция генерации текста с текущими настройками
 function getConfigText(config) {
-  const modelName = config.model === 'gemini-2.5-pro' ? 'Gemini 2.5 Pro' : 'Gemini 2.5 Flash';
+  let modelName;
+  if (config.model === 'gemini-2.5-pro') {
+    modelName = 'Gemini 2.5 Pro';
+  } else if (config.model === 'gemini-2.5-flash') {
+    modelName = 'Gemini 2.5 Flash';
+  } else if (config.model === 'gemini-2.5-flash-image') {
+    modelName = 'Gemini 2.5 Flash Image 🖼️';
+  }
   
   let tempText;
   if (config.temperature <= 0.3) {
@@ -953,6 +971,7 @@ function getConfigText(config) {
   }
   
   const thinkingText = config.thinkingEnabled ? '🧠 Включен' : '⚡ Выключен';
+  const supportsImages = config.model === 'gemini-2.5-flash-image';
   
   return `
 ⚙️ **НАСТРОЙКИ ЧАТА**
@@ -961,15 +980,21 @@ function getConfigText(config) {
 🌡️ **Температура**: ${tempText}
 📊 **Длина ответа**: ${tokensText}
 💭 **Режим размышлений**: ${thinkingText}
-${config.systemInstruction ? `\n📋 **Системная инструкция**: Установлена` : ''}
-
+${supportsImages ? '📸 **Поддержка изображений**: Включена\n' : ''}${config.systemInstruction ? `📋 **Системная инструкция**: Установлена\n` : ''}
 💡 Настройте параметры чата с помощью кнопок ниже, затем нажмите "Начать чат".
   `;
 }
 
 // Функция генерации клавиатуры настроек
 function getChatConfigKeyboard(config) {
-  const modelEmoji = config.model === 'gemini-2.5-pro' ? '🎓' : '⚡';
+  let modelEmoji;
+  if (config.model === 'gemini-2.5-pro') {
+    modelEmoji = '🎓';
+  } else if (config.model === 'gemini-2.5-flash') {
+    modelEmoji = '⚡';
+  } else if (config.model === 'gemini-2.5-flash-image') {
+    modelEmoji = '📸';
+  }
   
   let tempEmoji;
   if (config.temperature <= 0.3) tempEmoji = '❄️';
@@ -1027,8 +1052,17 @@ async function handleConfigChange(chatId, data, messageId) {
   const config = chatConfigs.get(chatId) || getDefaultChatConfig();
   
   if (data === 'config_model') {
-    // Переключаем модель
-    config.model = config.model === 'gemini-2.5-pro' ? 'gemini-2.5-flash' : 'gemini-2.5-pro';
+    // Переключаем модель: pro -> flash -> flash-image -> pro
+    if (config.model === 'gemini-2.5-pro') {
+      config.model = 'gemini-2.5-flash';
+      config.supportsImages = false;
+    } else if (config.model === 'gemini-2.5-flash') {
+      config.model = 'gemini-2.5-flash-image';
+      config.supportsImages = true;
+    } else {
+      config.model = 'gemini-2.5-pro';
+      config.supportsImages = false;
+    }
     
   } else if (data === 'config_temperature') {
     // Переключаем температуру: 0.2 -> 0.7 -> 1.2 -> 0.2
@@ -1123,7 +1157,16 @@ async function startChatWithConfig(chatId, configMessageId) {
       one_time_keyboard: false
     };
     
-    const modelName = config.model === 'gemini-2.5-pro' ? 'Gemini 2.5 Pro' : 'Gemini 2.5 Flash';
+    let modelName;
+    if (config.model === 'gemini-2.5-pro') {
+      modelName = 'Gemini 2.5 Pro';
+    } else if (config.model === 'gemini-2.5-flash') {
+      modelName = 'Gemini 2.5 Flash';
+    } else if (config.model === 'gemini-2.5-flash-image') {
+      modelName = 'Gemini 2.5 Flash Image';
+    }
+    
+    const supportsImages = config.model === 'gemini-2.5-flash-image';
     
     await bot.sendMessage(chatId, `
 💬 **ЧАТ ОТКРЫТ**
@@ -1131,10 +1174,9 @@ async function startChatWithConfig(chatId, configMessageId) {
 🤖 Модель: **${modelName}**
 🌡️ Температура: **${config.temperature}**
 📊 Макс. токенов: **${config.maxOutputTokens}**
-${config.model === 'gemini-2.5-flash' ? `💭 Размышления: **${config.thinkingEnabled ? 'Вкл' : 'Выкл'}**\n` : ''}
-Теперь вы можете общаться с моделью. Я буду помнить контекст всего нашего разговора.
+${config.model === 'gemini-2.5-flash' ? `💭 Размышления: **${config.thinkingEnabled ? 'Вкл' : 'Выкл'}**\n` : ''}${supportsImages ? '📸 **Поддержка изображений**: Вы можете отправлять картинки и обсуждать их!\n\n' : ''}Теперь вы можете общаться с моделью. Я буду помнить контекст всего нашего разговора.
 
-Просто отправляйте сообщения, и я буду на них отвечать!
+Просто отправляйте сообщения${supportsImages ? ' и изображения' : ''}, и я буду на них отвечать!
 
 💡 Чтобы закончить чат, нажмите кнопку на клавиатуре ниже.
     `, { reply_markup: keyboard, parse_mode: 'Markdown' });
@@ -1208,6 +1250,106 @@ async function processChatMessage(chatId, message) {
     console.error('Полная ошибка:', error);
     
     let errorMessage = '❌ Ошибка при обработке сообщения.\n\n';
+    
+    if (error.message) {
+      errorMessage += `Детали: ${error.message}`;
+    }
+    
+    // Специфичные ошибки API
+    if (error.message && error.message.includes('API key')) {
+      errorMessage += '\n\n💡 Проверьте правильность API ключа Gemini в файле .env';
+    } else if (error.message && error.message.includes('quota')) {
+      errorMessage += '\n\n💡 Превышен лимит запросов API. Попробуйте позже.';
+    } else if (error.message && error.message.includes('model')) {
+      errorMessage += '\n\n💡 Проблема с моделью. Проверьте название модели в коде.';
+    } else if (error.message && error.message.includes('permission')) {
+      errorMessage += '\n\n💡 Проверьте права доступа вашего API ключа.';
+    }
+    
+    bot.sendMessage(chatId, errorMessage);
+  }
+}
+
+// Функция обработки сообщения с изображением в чате
+async function processChatMessageWithImage(chatId, message, base64Image) {
+  try {
+    await bot.sendChatAction(chatId, 'typing');
+    
+    const chatSession = chatSessions.get(chatId);
+    if (!chatSession) {
+      bot.sendMessage(chatId, '⚠️ Чат-сессия не найдена. Используйте /chat, чтобы начать новый чат.');
+      return;
+    }
+    
+    console.log(`💬📸 Получено изображение с текстом в чате от пользователя ${chatId}: ${message || '[без текста]'}`);
+    
+    // Формируем части сообщения
+    const parts = [];
+    
+    // Если есть текст, добавляем его
+    if (message) {
+      parts.push({ text: message });
+    } else {
+      // Если текста нет, добавляем стандартный промпт
+      parts.push({ text: 'Опиши это изображение' });
+    }
+    
+    // Добавляем изображение
+    parts.push({
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: base64Image
+      }
+    });
+    
+    // Отправляем сообщение с изображением в чат
+    const response = await chatSession.chat.sendMessage({
+      message: parts
+    });
+    
+    console.log('✅ Ответ от Gemini получен');
+    
+    // Извлекаем текст из ответа
+    let resultText = '';
+    
+    if (response.text) {
+      resultText = response.text;
+    } else if (response.candidates && response.candidates[0]) {
+      const candidate = response.candidates[0];
+      if (candidate.content && candidate.content.parts) {
+        resultText = candidate.content.parts.map(p => p.text).join('');
+      }
+    }
+    
+    console.log('📝 Длина ответа:', resultText?.length || 0);
+    
+    if (resultText && resultText.trim()) {
+      // Разбиваем длинные сообщения на части (Telegram ограничение 4096 символов)
+      const maxLength = 4000;
+      if (resultText.length > maxLength) {
+        const chunks = resultText.match(new RegExp(`.{1,${maxLength}}`, 'g'));
+        for (const chunk of chunks) {
+          await bot.sendMessage(chatId, chunk, { parse_mode: 'Markdown' });
+        }
+      } else {
+        await bot.sendMessage(chatId, resultText, { parse_mode: 'Markdown' });
+      }
+    } else {
+      console.log('⚠️ Пустой ответ от Gemini');
+      bot.sendMessage(chatId, '⚠️ Gemini не смог ответить на ваше сообщение. Попробуйте переформулировать вопрос.');
+    }
+    
+    // Обновляем timestamp сессии
+    chatSession.timestamp = Date.now();
+    chatSessions.set(chatId, chatSession);
+    
+  } catch (error) {
+    console.error('❌ Ошибка при обработке сообщения с изображением в чате:');
+    console.error('Тип ошибки:', error.constructor.name);
+    console.error('Сообщение:', error.message);
+    console.error('Полная ошибка:', error);
+    
+    let errorMessage = '❌ Ошибка при обработке сообщения с изображением.\n\n';
     
     if (error.message) {
       errorMessage += `Детали: ${error.message}`;
